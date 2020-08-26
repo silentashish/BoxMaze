@@ -15,6 +15,16 @@ import styles from './style';
 import Physics from '../Physics';
 
 let boxIds = 0;
+
+var ball_options = {
+  // density: 0.04,
+  restitution: 1, // 0 = no bouncing, 1 = 100% of kinetic energy bounce back
+  friction: 0,
+  frictionAir: 0,
+  //frictionStatic: Infinity,
+  inertia: Infinity,
+};
+
 const CreateBox = (entities, {touches, screen}) => {
   let world = entities['physics'].world;
   let boxSize = Math.trunc(Math.max(screen.width, screen.height) * 0.075);
@@ -26,9 +36,15 @@ const CreateBox = (entities, {touches, screen}) => {
         t.event.pageY,
         boxSize,
         boxSize,
-        {frictionAir: 0.021},
+        ball_options,
       );
       Matter.World.add(world, [body]);
+      let num = Math.random() > 0.4 ? -1 : 1;
+      var vx = num * 4 * (Math.random() - 0.5);
+      var vy = num * 4 * (Math.random() - 0.5);
+
+      Matter.Body.applyForce(body, body.position, {x: vx, y: vy});
+
       entities[++boxIds] = {
         body: body,
         size: [boxSize, boxSize],
@@ -47,11 +63,33 @@ export default class App extends Component {
       running: true,
       score: 0,
       level: 1,
+      time: 15,
     };
 
     this.gameEngine = null;
 
     this.entities = this.setupWorld();
+
+    Matter.Resolver._restingThresh = 0.001;
+  }
+
+  componentDidMount() {
+    this.timer = setInterval(
+      () =>
+        this.setState(
+          (prevState) => ({time: prevState.time > 0 ? prevState.time - 1 : 0}),
+          () => {
+            if (this.state.time === 0) {
+              this.gameEngine.dispatch({type: 'game-over'});
+            }
+          },
+        ),
+      1000,
+    );
+  }
+
+  componentWillUnmount() {
+    clearInterval(this.timer);
   }
 
   setupWorld = () => {
@@ -220,10 +258,12 @@ export default class App extends Component {
 
   reset = () => {
     this.gameEngine.swap(this.setupWorld());
-    this.setState({
+    this.setState((prevState) => ({
       running: true,
       score: 0,
-    });
+      time: 16,
+      level: prevState.score > 130 ? prevState.level + 1 : prevState.level,
+    }));
   };
 
   render() {
@@ -238,9 +278,19 @@ export default class App extends Component {
           running={this.state.running}
           onEvent={this.onEvent}
           entities={this.entities}>
-          <View style={styles.scoreView}>
-            <Text style={styles.scoreText}>Score</Text>
-            <Text style={styles.valueText}>{this.state.score}</Text>
+          <View style={styles.menu}>
+            <View style={styles.scoreView}>
+              <Text style={styles.scoreText}>Score</Text>
+              <Text style={styles.valueText}>{this.state.score}</Text>
+            </View>
+            <View style={styles.scoreView}>
+              <Text style={styles.scoreText}>Level</Text>
+              <Text style={styles.valueText}>{this.state.level}</Text>
+            </View>
+            <View style={styles.scoreView}>
+              <Text style={styles.scoreText}>Time</Text>
+              <Text style={styles.valueText}>{this.state.time}</Text>
+            </View>
           </View>
         </GameEngine>
 
@@ -249,6 +299,10 @@ export default class App extends Component {
             style={styles.fullScreenButton}
             onPress={this.reset}>
             <View style={styles.fullScreen}>
+              <Text style={styles.gameOverText}>
+                {this.state.score > 120 ? 'You Win!!' : 'You Loose!!'}
+              </Text>
+              <View style={{height: 20}} />
               <Text style={styles.gameOverText}>Game Over</Text>
               <Text style={styles.gameScoreText}>
                 Score : {this.state.score}

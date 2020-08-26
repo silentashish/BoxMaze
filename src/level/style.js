@@ -48,6 +48,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: whiteColor,
   },
+  menu: {
+    flexDirection: 'row',
+    width: '100%',
+    justifyContent: 'space-around',
+  },
 });
 
 export default styles;
